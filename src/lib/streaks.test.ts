@@ -1,6 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import { currentStreak, longestStreak, normalize, statsFor, toggleCompletion } from './streaks';
-import { addDays, daysBetween, dateRange, toDateKey } from './dates';
+import {
+  addDays,
+  addMonths,
+  daysBetween,
+  dateRange,
+  formatCalendarDate,
+  formatMonthYear,
+  monthGrid,
+  startOfMonth,
+  toDateKey,
+} from './dates';
 import type { Habit } from './types';
 
 const TODAY = '2026-08-18';
@@ -115,6 +125,24 @@ describe('statsFor', () => {
     const h = habit({ completions: [TODAY, TODAY, days(1)] });
     expect(statsFor(h, TODAY).totalCompletions).toBe(2);
   });
+
+  it('uses backfilled history as part of the active period', () => {
+    const h = habit({ createdOn: TODAY, completions: dateRange(days(4), TODAY) });
+    expect(statsFor(h, TODAY).completionRate).toBe(1);
+  });
+
+  it('uses the full backfilled span instead of visually clamping the rate', () => {
+    const h = habit({ createdOn: TODAY, completions: [days(4), TODAY] });
+    expect(statsFor(h, TODAY).completionRate).toBe(0.4);
+  });
+
+  it('excludes future completions from stats for the requested day', () => {
+    const h = habit({
+      createdOn: days(1),
+      completions: [days(1), TODAY, addDays(TODAY, 1)],
+    });
+    expect(statsFor(h, TODAY)).toMatchObject({ totalCompletions: 2, completionRate: 1 });
+  });
 });
 
 describe('toggleCompletion', () => {
@@ -165,5 +193,36 @@ describe('date helpers', () => {
       '2026-08-17',
       '2026-08-18',
     ]);
+  });
+
+  it('formats the complete calendar date compactly', () => {
+    expect(formatCalendarDate(TODAY, 'en-US')).toBe('Tue, Aug 18, 2026');
+  });
+
+  it('finds the first day of a month', () => {
+    expect(startOfMonth('2026-08-18')).toBe('2026-08-01');
+  });
+
+  it('moves between months across a year boundary', () => {
+    expect(addMonths('2026-01-18', -1)).toBe('2025-12-01');
+    expect(addMonths('2026-12-18', 1)).toBe('2027-01-01');
+  });
+
+  it('places August 2026 on its real calendar weekdays', () => {
+    const cells = monthGrid('2026-08-18');
+    expect(cells).toHaveLength(42);
+    expect(cells.slice(0, 7)).toEqual([null, null, null, null, null, null, '2026-08-01']);
+    expect(cells).toContain('2026-08-31');
+  });
+
+  it('includes February 29 in a leap-year month grid', () => {
+    const cells = monthGrid('2028-02-10');
+    expect(cells).toHaveLength(42);
+    expect(cells).toContain('2028-02-29');
+    expect(cells.filter(Boolean)).toHaveLength(29);
+  });
+
+  it('formats a calendar month and year', () => {
+    expect(formatMonthYear('2026-08-18', 'en-US')).toBe('August 2026');
   });
 });

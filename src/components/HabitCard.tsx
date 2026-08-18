@@ -1,17 +1,18 @@
 import { statsFor } from '../lib/streaks';
-import { today, type DateKey } from '../lib/dates';
+import type { DateKey } from '../lib/dates';
 import type { Habit } from '../lib/types';
-import { Heatmap } from './Heatmap';
+import { MonthCalendar } from './MonthCalendar';
 
 interface HabitCardProps {
   habit: Habit;
+  currentDay: DateKey;
   onToggle: (id: string, date: DateKey) => void;
   onRemove: (id: string) => void;
 }
 
-export function HabitCard({ habit, onToggle, onRemove }: HabitCardProps) {
-  const stats = statsFor(habit);
-  const doneToday = habit.completions.includes(today());
+export function HabitCard({ habit, currentDay, onToggle, onRemove }: HabitCardProps) {
+  const stats = statsFor(habit, currentDay);
+  const doneToday = habit.completions.includes(currentDay);
   const rate = Math.round(stats.completionRate * 100);
 
   return (
@@ -34,7 +35,7 @@ export function HabitCard({ habit, onToggle, onRemove }: HabitCardProps) {
         className={`check ${doneToday ? 'check--done' : ''}`}
         style={doneToday ? { backgroundColor: habit.color, borderColor: habit.color } : undefined}
         aria-pressed={doneToday}
-        onClick={() => onToggle(habit.id, today())}
+        onClick={() => onToggle(habit.id, currentDay)}
       >
         {doneToday ? 'Done today' : 'Mark done today'}
       </button>
@@ -47,7 +48,7 @@ export function HabitCard({ habit, onToggle, onRemove }: HabitCardProps) {
           </dd>
         </div>
         <div>
-          <dt>Longest</dt>
+          <dt>Longest streak</dt>
           <dd>
             {stats.longestStreak} {stats.longestStreak === 1 ? 'day' : 'days'}
           </dd>
@@ -58,10 +59,11 @@ export function HabitCard({ habit, onToggle, onRemove }: HabitCardProps) {
         </div>
       </dl>
 
-      <Heatmap
+      <MonthCalendar
         completions={habit.completions}
         color={habit.color}
         habitName={habit.name}
+        currentDay={currentDay}
         onToggle={(date) => onToggle(habit.id, date)}
       />
     </article>

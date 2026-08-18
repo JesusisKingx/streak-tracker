@@ -1,18 +1,19 @@
 # Streak Tracker
 
-A habit tracker built with React and TypeScript. Add habits, mark them done, and watch your streaks build up.
+A habit tracker built with React and TypeScript. Add a habit, mark it done each day, and the app keeps count of how long you have kept it going.
 
-This is the web version of an idea I originally shipped as an iOS app — [Habit Tracker: Pro](https://apps.apple.com/app/id6747647440), on the App Store since July 2025. I rebuilt the core of it here to work through React and TypeScript properly.
+This is the web version of an app I shipped for iOS: [Habit Tracker: Pro](https://apps.apple.com/app/id6747647440), on the App Store since July 2025. I rebuilt the core of it here to work through React and TypeScript properly.
 
-**[Live demo](https://streak-tracker-devante.netlify.app)** · No account, no backend. Everything is stored in your browser.
+**[Live demo](https://streak-tracker-devante.netlify.app)** · No account, no backend. Everything stays in your browser.
 
 ---
 
 ## Features
 
 - Add habits and mark them complete for today
-- Current streak, longest streak, and consistency percentage per habit
-- A clickable 28-day heatmap — fill in a day you forgot to log
+- A navigable month calendar with real weekdays and dates
+- Current streak, longest streak, and consistency percentage for each habit
+- A header date that stays accurate across midnight
 - Data persists in `localStorage` across reloads
 - Keyboard accessible throughout, with light and dark themes
 
@@ -39,45 +40,46 @@ src/
 ├── lib/
 │   ├── dates.ts        calendar-date helpers
 │   ├── streaks.ts      streak and stats calculation
-│   ├── streaks.test.ts 29 unit tests
+│   ├── streaks.test.ts 38 unit tests
 │   ├── storage.ts      localStorage read/write
 │   ├── types.ts        Habit, HabitStats
-│   └── useHabits.ts    state + persistence hook
+│   ├── useHabits.ts    state and persistence hook
+│   └── useToday.ts     local-day refresh hook
 ├── components/
 │   ├── AddHabitForm.tsx
 │   ├── HabitCard.tsx
-│   └── Heatmap.tsx
+│   └── MonthCalendar.tsx
 └── App.tsx
 ```
 
-The streak logic lives in `src/lib/` as plain functions with no React imports. That separation is deliberate: the interesting logic is the part most likely to be wrong, and keeping it free of components means it can be tested directly, without rendering anything or mocking a DOM.
+The streak logic lives in `src/lib/` as plain functions with no React imports. That separation is deliberate: the interesting logic is the part most likely to be wrong, and keeping it out of the components means it can be tested directly, without rendering anything or mocking a DOM.
 
 ### Two decisions worth explaining
 
 **Dates are strings, not `Date` objects.**
 
-A habit is completed on a *calendar day* in the user's own timezone, not at an instant in time. The obvious implementation — add `86_400_000` milliseconds to step back a day — breaks twice a year: in the autumn a day is 25 hours long, so you land on the same date twice, and in the spring you skip one. Anyone whose streak spans a daylight-saving boundary sees it silently reset.
+A habit is completed on a *calendar day* in the user's own timezone, not at an instant in time. The obvious implementation, adding 86,400,000 milliseconds to step back a day, breaks twice a year: in autumn a day runs 25 hours, so you land on the same date twice; in spring you skip one entirely. Anyone whose streak crosses a daylight saving boundary watches it silently reset.
 
-So every date in this codebase is a `YYYY-MM-DD` string, and stepping between days goes through the `Date` constructor's month-overflow behaviour rather than millisecond arithmetic. Comparing days becomes plain string comparison, which is also what makes the sort in `normalize()` work with no comparator. There are tests covering month boundaries, year boundaries, and February 29th in a leap year.
+So every date here is a `YYYY-MM-DD` string, and stepping between days goes through the `Date` constructor's month overflow behavior instead of millisecond arithmetic. Comparing two days becomes plain string comparison, which is also why the sort in `normalize()` needs no comparator. Tests cover month boundaries, year boundaries, and February 29 in a leap year.
 
 **A streak survives today not being logged yet.**
 
-`currentStreak` anchors on today *or* yesterday. If it only counted today, then at 12:01am every user would open the app to a streak of zero — punished for a day that has barely started. The grace day is a product decision, and it is called out in a comment and pinned by a test so nobody later "fixes" it as an off-by-one.
+`currentStreak` anchors on today or yesterday. If it counted only today, every user would open the app at 12:01 a.m. to a streak of zero, punished for a day that had barely started. The grace day is a product decision rather than an off-by-one, so it is called out in a comment and pinned by a test.
 
 ---
 
 ## Tests
 
-29 unit tests covering the streak and date logic:
+38 unit tests covering the streak and date logic:
 
 ```
-✓ src/lib/streaks.test.ts (29 tests)
+✓ src/lib/streaks.test.ts (38 tests)
 
 Test Files  1 passed (1)
-     Tests  29 passed (29)
+     Tests  38 passed (38)
 ```
 
-They cover the ordinary cases and the ones that actually bite — duplicate entries, unsorted input, gaps between runs, a longest streak that isn't the most recent one, month and year rollovers, leap years, and a habit created today (which would divide by zero and report `Infinity` consistency without the guard in `statsFor`).
+They cover the ordinary cases and the ones that actually bite: duplicate entries, unsorted input, gaps between runs, a longest streak that is not the most recent one, month and year rollovers, leap years, future dates, and backfilled history that could otherwise push consistency above 100 percent.
 
 ---
 
@@ -85,23 +87,22 @@ They cover the ordinary cases and the ones that actually bite — duplicate entr
 
 React 18 · TypeScript (strict) · Vite · Vitest · CSS custom properties
 
-No UI framework and no state library. At this size both would be more configuration than code.
+No UI framework and no state library. At this size, both would be more configuration than code.
+
+---
+
+## Deploying
+
+`netlify.toml` is included, so connecting the repo in Netlify takes no manual setup. The build command, publish directory, Node version, and single-page redirect are already configured.
 
 ---
 
 ## About me
 
-I'm DeVante Bush, a self-taught developer in Ohio. I build and ship products end to end through my studio, [KT Forge](https://ktforge.dev) — two iOS apps on the App Store, a web app, and a commercial After Effects extension.
+I'm DeVante Bush, a self-taught developer in Ohio. I build and ship products end to end through my studio, [KT Forge](https://ktforge.dev): two iOS apps on the App Store, a web app, and a commercial After Effects extension.
 
 [ktforge.dev](https://ktforge.dev) · [LinkedIn](https://linkedin.com/in/devante-bush) · [@JesusisKingx](https://github.com/JesusisKingx)
 
 ## License
 
 MIT
-
----
-
-## Deploying
-
-This repo includes a `netlify.toml`, so connecting it in Netlify needs no manual
-configuration — build command, publish directory, and SPA redirect are already set.

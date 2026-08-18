@@ -47,9 +47,12 @@ export function longestStreak(completions: readonly DateKey[]): number {
 
 /** Every stat for a habit, computed from its completion history. */
 export function statsFor(habit: Habit, asOf: DateKey = today()): HabitStats {
-  const days = normalize(habit.completions);
+  // Future data should not affect stats for the requested calendar day.
+  const days = normalize(habit.completions).filter((day) => day <= asOf);
+  // Backfilled heatmap entries mean tracking began before the habit record was created.
+  const activeSince = days[0] && days[0] < habit.createdOn ? days[0] : habit.createdOn;
   // +1 because a habit created today has been active for one day, not zero.
-  const daysActive = Math.max(1, daysBetween(habit.createdOn, asOf) + 1);
+  const daysActive = Math.max(1, daysBetween(activeSince, asOf) + 1);
 
   return {
     currentStreak: currentStreak(days, asOf),
